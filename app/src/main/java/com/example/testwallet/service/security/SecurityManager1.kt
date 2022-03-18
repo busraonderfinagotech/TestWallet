@@ -2,6 +2,7 @@ package com.example.testwallet.service.security
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import java.util.*
 
@@ -13,8 +14,8 @@ object SecurityManager1 {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun decryptWithAES(context: Context, data: String): String? {
-        return AESManager.decrypt(context, data)
+    fun decryptWithAES(context: Context, data: String): String {
+        return AESManager.decrypt(context, Base64.getDecoder().decode(data))
     }
 
     fun generateAESKey(context: Context) {

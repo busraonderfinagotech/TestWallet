@@ -7,19 +7,24 @@ import java.util.Base64
 import androidx.annotation.RequiresApi
 import com.example.testwallet.service.utils.Constants.AES_ALGORITHM
 import com.example.testwallet.service.utils.Constants.AES_TRANSFORMATION
+import timber.log.Timber
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.lang.Exception
+import java.security.spec.AlgorithmParameterSpec
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 
 object AESManager {
+
+    private const val GCM_IV_LENGTH = 12
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun encrypt(context: Context, strToEncrypt: String): ByteArray {
@@ -57,18 +62,19 @@ object AESManager {
     }*/
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun decrypt(context: Context, strToDecrypt: String): String? {
-        try {
-            val cipher = Cipher.getInstance(AES_TRANSFORMATION)
-            val decodedKey = Base64.getDecoder().decode(getSavedSecretKey(context))
-            cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(decodedKey, 0, decodedKey.size, "AES"))
-            return String(
-                cipher.doFinal(Base64.getDecoder().decode(strToDecrypt))
-            )
-        } catch (e: Exception) {
-            println("Error while decrypting: $e")
-        }
-        return null
+    @Throws(Exception::class)
+    fun decrypt(context: Context, cipherMessage: ByteArray): String {
+        val cipher = Cipher.getInstance(AES_TRANSFORMATION) // should use padding here?
+        //use first 12 bytes for iv
+        val gcmIv: AlgorithmParameterSpec = GCMParameterSpec(128, cipherMessage, 0, GCM_IV_LENGTH)
+        val secretKey: SecretKey =
+            SecretKeySpec(android.util.Base64.decode(getSavedSecretKey(context), 0), AES_ALGORITHM)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmIv)
+        Timber.tag("D.Key : " + secretKey)
+        //use everything from 12 bytes on as ciphertext
+        val decryptedResponse =
+            cipher.doFinal(cipherMessage, GCM_IV_LENGTH, cipherMessage.size - GCM_IV_LENGTH)
+        return String(decryptedResponse, Charsets.UTF_8)
     }
 
 
